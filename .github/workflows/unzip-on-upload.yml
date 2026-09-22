@@ -1,0 +1,37 @@
+name: Auto Unzip
+on:
+  push:
+    paths:
+      - '**.zip' # 只要提交任何zip文件就触发
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: 安装unzip
+        run: sudo apt update && sudo apt install -y unzip
+
+      - name: 遍历所有zip解压
+        run: |
+          for zipfile in $(find . -name "*.zip"); do
+            echo "解压文件: $zipfile"
+            dirname="${zipfile%.zip}"
+            mkdir -p "$dirname"
+            # -o 强制覆盖，不需要交互确认
+            unzip -o "$zipfile" -d "$dirname"
+          done
+
+      - name: 提交解压后的文件回仓库
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "🤖 Auto unzip zip archive" || echo "无变更，跳过提交"
+          git push
